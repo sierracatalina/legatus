@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/pcp-verifier-result.schema.json",
+  "title": "PCP verifier disposition",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "status", "authorization_id"],
+      "properties": {
+        "profile": { "const": "pcp-legatus-v1" },
+        "status": { "const": "allow" },
+        "authorization_id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "status", "code", "retriable"],
+      "properties": {
+        "profile": { "const": "pcp-legatus-v1" },
+        "status": { "const": "deny" },
+        "code": {
+          "enum": ["invalid_proof", "unsigned", "unknown_key", "unknown_issuer", "bad_signature", "proof_signer_mismatch", "proof_key_mismatch", "proof_purpose_mismatch", "proof_envelope_mismatch", "carrier_is_not_authority", "identity_collapse", "grant_not_found", "expired", "revoked", "scope_mismatch", "budget_exhausted", "unavailable"]
+        },
+        "retriable": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "code": { "const": "unavailable" } }, "required": ["code"] },
+          "then": { "properties": { "retriable": { "const": true } } },
+          "else": { "properties": { "retriable": { "const": false } } }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/transcript.schema.json",
+  "title": "Legatus unsigned fixture transcript",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["legatus", "kind", "thread", "seq_through", "journal_through", "now", "state", "floor", "principal", "pending", "stop", "clock_events", "links", "integrity"],
+  "properties": {
+    "legatus": { "const": 0 },
+    "kind": { "const": "transcript" },
+    "thread": { "$ref": "#/$defs/id" },
+    "seq_through": { "$ref": "#/$defs/safePositive" },
+    "journal_through": { "$ref": "#/$defs/safePositive" },
+    "now": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "state": { "enum": ["running", "awaiting_approve", "paused", "failed", "cancelled"] },
+    "floor": { "oneOf": [{ "$ref": "#/$defs/principal" }, { "type": "null" }] },
+    "principal": { "$ref": "#/$defs/principal" },
+    "pending": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+    "stop": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["envelope", "code"],
+          "properties": {
+            "envelope": { "$ref": "#/$defs/id" },
+            "code": { "enum": ["CANCEL_STOP", "CANCEL_SUPERSEDED", "CANCEL_OTHER"] }
+          }
+        }
+      ]
+    },
+    "clock_events": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "journal_position", "after_seq", "now", "deadline_now"],
+        "properties": {
+          "kind": { "const": "timeout" },
+          "journal_position": { "$ref": "#/$defs/safePositive" },
+          "after_seq": { "$ref": "#/$defs/safePositive" },
+          "now": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "deadline_now": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 16384,
+      "items": { "$ref": "#/$defs/link" }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": { "mode": { "const": "unsigned_fixture" } }
+    }
+  },
+  "$defs": {
+    "safePositive": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
+    "principal": { "type": "string", "pattern": "^urn:pcp:principal:[A-Za-z0-9._~-]{1,220}$", "maxLength": 256 },
+    "link": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["role", "envelope", "task_ref"],
+          "properties": { "role": { "const": "request" }, "envelope": { "$ref": "#/$defs/id" }, "task_ref": { "$ref": "#/$defs/id" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["role", "envelope", "type", "seq", "signer", "authorization_id"],
+          "properties": {
+            "role": { "const": "move" }, "envelope": { "$ref": "#/$defs/id" },
+            "type": { "enum": ["delegate", "handoff", "approve", "fail", "retry", "cancel", "resume"] },
+            "seq": { "$ref": "#/$defs/safePositive" }, "signer": { "$ref": "#/$defs/principal" },
+            "authorization_id": { "$ref": "#/$defs/id" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["role", "envelope", "of", "approver"],
+          "properties": { "role": { "const": "approval" }, "envelope": { "$ref": "#/$defs/id" }, "of": { "$ref": "#/$defs/id" }, "approver": { "$ref": "#/$defs/principal" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["role", "ref", "after"],
+          "properties": { "role": { "const": "action" }, "ref": { "$ref": "#/$defs/id" }, "after": { "$ref": "#/$defs/id" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["role", "ref", "after", "action"],
+          "properties": { "role": { "const": "receipt" }, "ref": { "$ref": "#/$defs/id" }, "after": { "$ref": "#/$defs/id" }, "action": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] } }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/pcp-verifier-request.schema.json",
+  "title": "Legatus to PCP verifier request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile", "signer_id", "purpose", "envelope", "proof"],
+  "properties": {
+    "profile": { "const": "pcp-legatus-v1" },
+    "signer_id": { "type": "string", "pattern": "^urn:pcp:principal:[A-Za-z0-9._~-]{1,220}$", "maxLength": 256 },
+    "purpose": { "enum": ["legatus.delegate", "legatus.handoff", "legatus.approve", "legatus.fail", "legatus.retry", "legatus.cancel", "legatus.resume"] },
+    "envelope": { "$ref": "envelope.schema.json" },
+    "proof": { "type": "string", "minLength": 1, "maxLength": 4096 }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/ack.schema.json",
+  "title": "Legatus commit acknowledgement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["legatus", "kind", "outcome", "envelope_id", "thread", "seq", "journal_position", "authorization_id", "authorization_state", "state", "floor", "pending"],
+  "properties": {
+    "legatus": { "const": 0 },
+    "kind": { "const": "ack" },
+    "outcome": { "enum": ["committed", "duplicate"] },
+    "envelope_id": { "$ref": "#/$defs/id" },
+    "thread": { "$ref": "#/$defs/id" },
+    "seq": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "journal_position": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "authorization_id": { "$ref": "#/$defs/id" },
+    "authorization_state": { "enum": ["committed", "reconciliation_required"] },
+    "state": { "enum": ["running", "awaiting_approve", "paused", "failed", "cancelled"] },
+    "floor": { "oneOf": [{ "$ref": "#/$defs/principal" }, { "type": "null" }] },
+    "pending": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
+    "principal": { "type": "string", "maxLength": 256, "pattern": "^urn:pcp:principal:[A-Za-z0-9._~-]{1,220}$" }
+  }
+}

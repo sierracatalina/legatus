@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/pcp-finalize-result.schema.json",
+  "title": "PCP authorization finalization result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile", "status", "authorization_id", "outcome"],
+  "properties": {
+    "profile": { "const": "pcp-legatus-v1" },
+    "status": { "const": "finalized" },
+    "authorization_id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
+    "outcome": { "enum": ["commit", "release"] }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/journal-record.schema.json",
+  "title": "Legatus durable journal record",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legatus", "kind", "position", "writer_epoch", "authorization_id", "envelope"],
+      "properties": {
+        "legatus": { "const": 0 },
+        "kind": { "const": "envelope" },
+        "position": { "$ref": "#/$defs/safePositive" },
+        "writer_epoch": { "$ref": "#/$defs/safePositive" },
+        "authorization_id": { "$ref": "#/$defs/id" },
+        "envelope": { "$ref": "envelope.schema.json" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legatus", "kind", "position", "writer_epoch", "thread", "after_seq", "now", "deadline_now", "pending"],
+      "properties": {
+        "legatus": { "const": 0 },
+        "kind": { "const": "timeout" },
+        "position": { "$ref": "#/$defs/safePositive" },
+        "writer_epoch": { "$ref": "#/$defs/safePositive" },
+        "thread": { "$ref": "#/$defs/id" },
+        "after_seq": { "$ref": "#/$defs/safePositive" },
+        "now": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "deadline_now": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "pending": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      }
+    }
+  ],
+  "$defs": {
+    "safePositive": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+  }
+}

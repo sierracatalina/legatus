@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/legatus/v0.1/error.schema.json",
+  "title": "Legatus protocol error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["legatus", "kind", "code", "retriable"],
+  "properties": {
+    "legatus": { "const": 0 },
+    "kind": { "const": "error" },
+    "code": {
+      "enum": [
+        "LEGATUS_E_SCHEMA", "LEGATUS_E_UNKNOWN_TYPE", "LEGATUS_E_DUP_ID",
+        "LEGATUS_E_THREAD_MISMATCH", "LEGATUS_E_CAUSALITY", "LEGATUS_E_MISSING_PARENT",
+        "LEGATUS_E_CLOCK_SKEW", "LEGATUS_E_SIG", "LEGATUS_E_NO_FLOOR",
+        "LEGATUS_E_STALE_FLOOR", "LEGATUS_E_NOT_APPROVER", "LEGATUS_E_GATE_PENDING",
+        "LEGATUS_E_ALREADY_TERMINAL", "LEGATUS_E_ILLEGAL_TRANSITION",
+        "LEGATUS_E_WRITER_UNAVAILABLE", "NOT_A_SUBMIT"
+      ]
+    },
+    "retriable": { "type": "boolean" },
+    "envelope_id": { "$ref": "#/$defs/id" },
+    "thread": { "$ref": "#/$defs/id" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "code": { "const": "LEGATUS_E_WRITER_UNAVAILABLE" } }, "required": ["code"] },
+      "then": { "properties": { "retriable": { "const": true } } },
+      "else": { "properties": { "retriable": { "const": false } } }
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+  }
+}
