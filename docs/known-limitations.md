@@ -33,6 +33,10 @@ The v0.1 transcript is an unsigned fixture export. Action and receipt references
 
 The repository includes no HTTP, MCP, A2A, Nostr, or file adapter. The 64 KiB reference body limit, durable acknowledgement behavior, failover, crash recovery, and fault injection need validation in each production runtime.
 
+### Task and Context Layer execution authority
+
+The core `task_ref` remains opaque for v0 compatibility. The [optional execution authority profile](../spec/08-execution-authority-profile.md) requires a digest-pinned manifest and fresh recipient authority bound to the event that installed the current floor. The Python helper uses caller-supplied bytes and a caller-supplied Context Layer verifier; it neither authenticates a real bundle nor implements an external effect fence. Production integration must supply those components, recheck value-to-action/destination/purpose policy, and test handoff and effect races.
+
 ### Scope of the runner
 
 The deterministic runner covers the included reference cases. It provides no exhaustive model check, formal proof, production interoperability certificate, performance score, or availability claim.

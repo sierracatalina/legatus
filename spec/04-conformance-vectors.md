@@ -392,7 +392,37 @@ setup: any committed thread. expected export: it validates against [transcript.s
 
 ---
 
-## 8. Coverage map
+## 8. Optional execution authority profile
+
+These vectors use [the out-of-band execution authority profile](08-execution-authority-profile.md). They do not change core Legatus acceptance or its typed errors.
+
+### V-080 digest-pinned task
+
+setup: a PCP-authorized delegate whose signed `task_ref` is `sha256:` plus the digest of immutable task manifest bytes. The thread is running, the PCP commit is finalized, and a trusted Context Layer verifier approves the current recipient and installation event. expected: the adapter may dispatch only those exact bytes under the current writer fence.
+
+### V-081 altered or mutable task
+
+setup: V-080 with one task byte changed, or a legacy `task_ref` pointing to a mutable resource. expected: `LEGATUS_PROFILE_E_TASK_REVISION`, no effect. The original Legatus delegate remains committed.
+
+### V-082 handoff recipient
+
+setup: V-080 followed by ungated handoff B to C. Supply B's prior bundle, or C's authority bound to the previous installation event. expected: `LEGATUS_PROFILE_E_CONTEXT_AUTHORITY`, no effect. Fresh C authority bound to the committed handoff's id and journal position may proceed.
+
+### V-083 gated and same-recipient handoff
+
+setup: a gated handoff B to C. While approval is pending, execution is refused. After approval, the installation event is the committed `approve` envelope. A grant bound only to the proposed handoff is refused. A handoff B to B also requires fresh authority for its new event.
+
+### V-084 stale view and uncertainty
+
+setup: a stale journal prefix or writer epoch, a due timeout, or an unfinalized PCP commit. expected: no effect. A valid current journal position and reconciled PCP authorization are required before retry.
+
+### V-085 fork quarantine
+
+setup: two individually replayable authenticated histories diverge at the same journal position. expected: `fork` classification, no automatic merge or effect until an incident process chooses one authority.
+
+---
+
+## 9. Coverage map
 
 | protocol behavior | vectors |
 | --- | --- |
@@ -407,5 +437,6 @@ setup: any committed thread. expected export: it validates against [transcript.s
 | first-match errors | V-020…V-038, V-011b |
 | operator chat / inter-agent not submit | V-060, V-061 |
 | transcript integrity marker | V-070 |
+| optional execution authority profile | V-080…V-085 |
 
 Run `python -m conformance.run` for the deterministic executable subset and `python -m unittest discover -s tests -v` for its regression suite. The runner is a reference-model check; cryptographic PCP integration, durable storage, and distributed consensus require separate production tests.

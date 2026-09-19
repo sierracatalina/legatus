@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added an optional product execution authority profile. A signed `task_ref` can pin exact task manifest bytes, and a Context Layer verifier must approve the current floor recipient for the floor-installing journal event before an effect.
+- Added deterministic checks for task mutation, handoff freshness, stale views and writers, PCP finalization uncertainty, and journal fork classification without changing the v0 envelope or state machine.
+
 ## v0.1 — 2026-09-15
 
 - Defined the seven coordination moves, envelope, state machine, shared clock, typed errors, runtime paths, transcripts, transport profiles, conformance vectors, and operations drills.

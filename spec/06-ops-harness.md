@@ -71,6 +71,14 @@ A fork contains two different committed envelopes at the same sequence or two jo
 
 **H-016** writer loses journal compare-and-set after PCP `allow`. expected: retain the authorization reservation and return retriable `LEGATUS_E_WRITER_UNAVAILABLE`. Under a current writer fence, refresh the journal. Commit the reservation when the exact candidate and authorization identifier are present. Release it after absence is established. Keep an authorization mismatch or collision unresolved.
 
+The following optional [execution profile](08-execution-authority-profile.md) drills test the product effect seam. They leave the core move state machine unchanged.
+
+**H-017** an effect worker holds an older journal prefix or writer epoch after a handoff. expected: refuse effect dispatch even if its old floor and Context Layer bundle matched at the prior prefix. Reload under the current fence, then obtain fresh recipient authority for the installation event.
+
+**H-018** two authenticated, individually replayable journals conflict at one position. expected: classify `fork`, quarantine effects, preserve both histories, and use the deployment incident process to choose authority. Never merge the histories or infer a winner from wall time.
+
+**H-019** a handoff, cancellation, timeout, or failover races an effect. expected: the effect adapter's journal-position precondition and effect-side fence serialize the result; either the effect commits under the prior valid authority before the transition, or the effect is denied/retried after it. Require a real durable store and effect adapter to verify this drill.
+
 ---
 
 ## 4. Recovery
@@ -140,6 +148,7 @@ Record n, p50, p99, hardware, operating system, runtime versions, and the exact 
 | transport retry / PCP idempotency | H-001, H-002, H-005, H-006 |
 | typed retry | H-003, H-004 |
 | partition / reconnect / fencing | H-010…H-016 |
+| optional execution authority and fork quarantine | H-017…H-019 |
 | recovery / checkout | H-020…H-024 |
 | incident / stop / export | H-030, H-031, H-032, H-033 |
 | benchmark | §6 method only |

@@ -24,6 +24,7 @@ The runner writes one stable JSON report to standard output and exits nonzero wh
 - bounded envelope validation and duplicate JSON-member rejection;
 - duplicate acknowledgement semantics; and
 - the explicit unsigned fixture transcript profile.
+- optional execution-profile task digest checks, handoff recipient refresh, stale-view refusal, PCP-finalization gating, and replayable fork classification.
 
 The regression tests inspect the same behaviors at smaller boundaries, including recovery and malformed verifier results. Written portable cases remain in [the conformance vectors](../spec/04-conformance-vectors.md), with distributed failure drills in [the operations harness](../spec/06-ops-harness.md).
 
@@ -41,6 +42,7 @@ A passing local report establishes consistency between the included reference mo
 - a durable PCP reservation ledger and idempotent finalization integration;
 - transport-adapter and body-limit tests;
 - authenticated action and receipt evidence; and
+- immutable task storage, a real Context Layer recipient verifier, and an effect-side fence for the optional execution profile; and
 - published environment, revision, result artifact, and fault-injection evidence.
 
 The suite publishes no latency, throughput, availability, or production-readiness score.
