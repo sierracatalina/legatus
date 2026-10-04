@@ -410,7 +410,7 @@ setup: V-080 followed by ungated handoff B to C. Supply B's prior bundle, or C's
 
 ### V-083 gated and same-recipient handoff
 
-setup: a gated handoff B to C. While approval is pending, execution is refused. After approval, the installation event is the committed `approve` envelope. Disclosure authorization bound only to the proposed handoff is refused. A handoff B to B also requires fresh disclosure authorization for its new event; action authority still comes from C's live PCP grant.
+setup: a gated handoff B to C. While approval is pending, execution is refused. After approval, the installation event is the committed `approve` envelope. Disclosure authorization bound only to the proposed handoff is refused. A handoff B to B also requires fresh disclosure authorization for its new event; action authority still comes from B's live PCP grant.
 
 ### V-084 stale view and uncertainty
 
