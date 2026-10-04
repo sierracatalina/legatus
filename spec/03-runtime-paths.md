@@ -116,3 +116,5 @@ A conforming runtime MUST:
 9. preserve the journal when a thread fails or is cancelled.
 
 The implementation of distributed consensus, PCP cryptography, context disclosure, receipt verification, and product execution remains outside this repository.
+
+The [optional execution authority profile](08-execution-authority-profile.md) describes the additional task-byte, current-floor, PCP action-authority, Context Layer disclosure-authorization, and effect-fence checks a product must perform before acting on a committed thread. A committed handoff alone transfers the Legatus floor; the product separately obtains a live principal-signed grant and fresh recipient-bound disclosure authorization.

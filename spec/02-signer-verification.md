@@ -30,6 +30,8 @@ PCP verifies an Ed25519 signature over the RFC 8785 JCS encoding of the followin
 
 The context string prevents cross-protocol signature reuse. The unsigned envelope binds the thread, move, parents, clock, payload, and signer. PCP MUST require the proof signer to equal the envelope signer, resolve the protected key id under that signer, and require the protected purpose to equal `legatus.` plus the envelope type.
 
+For execution under the [optional authority profile](08-execution-authority-profile.md), the signed `delegate.payload.task_ref` is a SHA-256 content reference. PCP verifies the reference as part of the envelope; the product adapter verifies the referenced bytes before use. PCP's `allow` does not certify the task content or Context Layer recipient rights.
+
 ## Verifier request
 
 Legatus sends PCP the full candidate envelope, its opaque proof, the expected signer, and the expected purpose:

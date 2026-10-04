@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+from hashlib import sha256
 from pathlib import Path
 import sys
 
@@ -21,6 +22,7 @@ from conformance.legatus import (  # noqa: E402
     parse_candidate,
     pcp_idempotency_key,
 )
+from conformance.execution_profile import ProfileDenied, journal_relation, run_authorized  # noqa: E402
 
 
 A = "urn:pcp:principal:a"
@@ -363,6 +365,83 @@ def case_unsigned_transcript() -> None:
         raise AssertionError("unsigned fixture contains an ambiguous sig field")
 
 
+def case_profile_task_revision() -> None:
+    task = b'{"format":"task-manifest-v1","instruction":"public summary"}'
+    task_ref = "sha256:" + sha256(task).hexdigest()
+    runtime = Runtime()
+    runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
+    executed: list[bytes] = []
+    effect = {"action": "send", "destination": "public-summary", "purpose": "x.xchat.fulfill"}
+
+    def run_task(candidate: bytes) -> dict:
+        return run_authorized(
+            runtime, "t1", authoritative_now=1, task_bytes=candidate,
+            grant_ref="urn:pcp:grant:effect-1", disclosure_ref="urn:cl:bundle:disclosure-1",
+            effect=effect, authorize_action=lambda request: request["recipient"] == B,
+            verify_disclosure=lambda request: (
+                request["recipient"] == B
+                and request["installing_envelope_id"] == "e1"
+                and request["task_digest"] == sha256(task).hexdigest()
+            ),
+            execute=lambda content, _checkpoint: executed.append(content),
+        )
+
+    try:
+        run_task(task + b" private-notes")
+    except ProfileDenied as exc:
+        _expect(exc.code, "LEGATUS_PROFILE_E_TASK_REVISION", "mutated task")
+    else:
+        raise AssertionError("mutated task executed")
+    _expect(executed, [], "mutated task effect isolation")
+    run_task(task)
+    _expect(executed, [task], "digest-pinned task")
+
+
+def case_profile_handoff_recipient() -> None:
+    task = b'{"format":"task-manifest-v1","instruction":"public summary"}'
+    task_ref = "sha256:" + sha256(task).hexdigest()
+    runtime = Runtime()
+    runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
+    runtime.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
+    executed: list[str] = []
+    effect = {"action": "send", "destination": "public-summary", "purpose": "x.xchat.fulfill"}
+
+    def run_with(issuer_event: str, recipient: str) -> dict:
+        return run_authorized(
+            runtime, "t1", authoritative_now=2, task_bytes=task,
+            grant_ref="urn:pcp:grant:effect-1", disclosure_ref="urn:cl:bundle:disclosure-1",
+            effect=effect, authorize_action=lambda request: request["recipient"] == C,
+            verify_disclosure=lambda request: (
+                request["installing_envelope_id"] == issuer_event
+                and request["recipient"] == recipient
+            ),
+            execute=lambda _content, checkpoint: executed.append(checkpoint["recipient"]),
+        )
+
+    try:
+        run_with("e1", B)
+    except ProfileDenied as exc:
+        _expect(exc.code, "LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION", "old recipient")
+    else:
+        raise AssertionError("old recipient disclosure executed after handoff")
+    _expect(executed, [], "handoff effect isolation")
+    result = run_with("e2", C)
+    _expect(result["checkpoint"]["from_principal"], B, "handoff origin")
+    _expect(executed, [C], "fresh recipient disclosure authorization")
+
+
+def case_profile_fork_quarantine() -> None:
+    left = Runtime()
+    left.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "work-1"}))
+    right = left.store.records[:]
+    left.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
+    fork = Runtime()
+    fork.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "work-1"}))
+    fork.submit(env("e2", "handoff", 2, 2, B, {"to": A}, "e1"))
+    _expect(journal_relation(right, left.store.records), "left_prefix", "valid catchup")
+    _expect(journal_relation(left.store.records, fork.store.records), "fork", "conflicting history")
+
+
 CASES = (
     ("moves.seven", case_seven_moves),
     ("gate.approve", case_gate_and_approve),
@@ -385,6 +464,9 @@ CASES = (
     ("schema.protocol-boundaries", case_protocol_boundaries),
     ("idempotency.duplicate", case_duplicate_is_ack),
     ("transcript.unsigned-fixture", case_unsigned_transcript),
+    ("profile.task-revision", case_profile_task_revision),
+    ("profile.handoff-recipient", case_profile_handoff_recipient),
+    ("profile.fork-quarantine", case_profile_fork_quarantine),
 )
 
 

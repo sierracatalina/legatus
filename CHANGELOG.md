@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added an optional product execution authority profile. A signed `task_ref` can pin exact task manifest bytes; a live principal-signed PCP grant supplies action authority, and a separate Context Layer verifier supplies recipient-bound disclosure authorization for the floor-installing journal event.
+- Added a deterministic PCP grant → Context Layer disclosure → Legatus execution trace.
+- Added deterministic checks for task mutation, handoff freshness, stale views and writers, PCP finalization uncertainty, and journal fork classification without changing the v0 envelope or state machine.
+
 ## v0.1 — 2026-09-15
 
 - Defined the seven coordination moves, envelope, state machine, shared clock, typed errors, runtime paths, transcripts, transport profiles, conformance vectors, and operations drills.
