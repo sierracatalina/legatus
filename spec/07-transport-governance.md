@@ -51,7 +51,7 @@ An independent implementation must:
 
 Two runtimes interoperate when they pass the same published fixtures, replay each other's authoritative journal records in position order, refuse fork merging, and produce the same state from the same journal. A later authoritative clock value may append one new timeout record; that record then becomes part of the shared state.
 
-Products that execute a delegated task can additionally adopt [the execution authority profile](08-execution-authority-profile.md). It applies at task read and effect dispatch, requires Context Layer recipient verification after floor installation, and does not alter v0 wire interoperability.
+Products that execute a delegated task can additionally adopt [the execution authority profile](08-execution-authority-profile.md). It applies at task read and effect dispatch, requires PCP action authority plus separate Context Layer recipient-bound disclosure authorization after floor installation, and does not alter v0 wire interoperability.
 
 ## 4. Machine contracts
 

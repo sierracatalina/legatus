@@ -1,9 +1,9 @@
 """Fail-closed reference seam between Legatus coordination and product execution.
 
 This optional profile changes no Legatus envelope or PCP signed object. The
-caller supplies the actual task bytes and a Context Layer authority verifier.
-The verifier must authenticate issuance and recipient rights; this module does
-not issue or validate Context Layer bundles itself.
+caller supplies the actual task bytes, a PCP action-authority check, and a
+Context Layer recipient-bound disclosure-authorization check. This module does
+not issue grants or Context Layer bundles itself.
 """
 
 from __future__ import annotations
@@ -84,11 +84,14 @@ def run_authorized(
     *,
     authoritative_now: int,
     task_bytes: bytes,
-    context_ref: str,
-    verify_context: Callable[[dict[str, Any]], bool],
+    grant_ref: str,
+    disclosure_ref: str,
+    effect: dict[str, str],
+    authorize_action: Callable[[dict[str, Any]], bool],
+    verify_disclosure: Callable[[dict[str, Any]], bool],
     execute: Callable[[bytes, dict[str, Any]], Any],
 ) -> dict[str, Any]:
-    """Check current authority and invoke a synchronous fixture action.
+    """Check action authority and disclosure authorization before execution.
 
     In production, the effect adapter must keep the same writer fence and
     journal-position precondition through its effect dispatch. The in-process
@@ -98,11 +101,16 @@ def run_authorized(
     if (
         not _safe_int(authoritative_now)
         or type(task_bytes) is not bytes
-        or not isinstance(context_ref, str)
-        or not context_ref
+        or not isinstance(grant_ref, str)
+        or not grant_ref
+        or not isinstance(disclosure_ref, str)
+        or not disclosure_ref
+        or not isinstance(effect, dict)
+        or set(effect) != {"action", "destination", "purpose"}
+        or any(not isinstance(value, str) or not value for value in effect.values())
     ):
         raise ProfileDenied("LEGATUS_PROFILE_E_INPUT")
-    if not callable(verify_context) or not callable(execute):
+    if not callable(authorize_action) or not callable(verify_disclosure) or not callable(execute):
         raise ProfileDenied("LEGATUS_PROFILE_E_INPUT")
 
     # Match Runtime.submit's lock order: runtime first, then store.
@@ -162,14 +170,24 @@ def run_authorized(
             "installing_journal_position": installing_position,
             "journal_position": runtime._known_position,
             "writer_epoch": runtime.writer_epoch,
+            "grant_ref": grant_ref,
+            "disclosure_ref": disclosure_ref,
+            "effect": deepcopy(effect),
         }
-        request = {**checkpoint, "context_ref": context_ref}
+        authority_request = deepcopy(checkpoint)
         try:
-            allowed = verify_context(deepcopy(request))
+            authorized = authorize_action(authority_request)
         except Exception as exc:
-            raise ProfileDenied("LEGATUS_PROFILE_E_CONTEXT_AUTHORITY") from exc
-        if allowed is not True:
-            raise ProfileDenied("LEGATUS_PROFILE_E_CONTEXT_AUTHORITY")
+            raise ProfileDenied("LEGATUS_PROFILE_E_ACTION_AUTHORITY") from exc
+        if authorized is not True:
+            raise ProfileDenied("LEGATUS_PROFILE_E_ACTION_AUTHORITY")
+        disclosure_request = deepcopy(checkpoint)
+        try:
+            disclosed = verify_disclosure(disclosure_request)
+        except Exception as exc:
+            raise ProfileDenied("LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION") from exc
+        if disclosed is not True:
+            raise ProfileDenied("LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION")
         if (
             runtime.writer_id != runtime.store.writer_id
             or runtime.writer_epoch != runtime.store.writer_epoch

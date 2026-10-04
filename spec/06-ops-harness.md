@@ -73,7 +73,7 @@ A fork contains two different committed envelopes at the same sequence or two jo
 
 The following optional [execution profile](08-execution-authority-profile.md) drills test the product effect seam. They leave the core move state machine unchanged.
 
-**H-017** an effect worker holds an older journal prefix or writer epoch after a handoff. expected: refuse effect dispatch even if its old floor and Context Layer bundle matched at the prior prefix. Reload under the current fence, then obtain fresh recipient authority for the installation event.
+**H-017** an effect worker holds an older journal prefix or writer epoch after a handoff. expected: refuse effect dispatch even if its old floor and Context Layer bundle matched at the prior prefix. Reload under the current fence, then obtain a live PCP action grant and fresh recipient-bound disclosure authorization for the installation event.
 
 **H-018** two authenticated, individually replayable journals conflict at one position. expected: classify `fork`, quarantine effects, preserve both histories, and use the deployment incident process to choose authority. Never merge the histories or infer a winner from wall time.
 

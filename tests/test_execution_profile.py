@@ -10,6 +10,12 @@ B = "urn:pcp:principal:b"
 C = "urn:pcp:principal:c"
 TASK = b'{"format":"task-manifest-v1","instruction":"send only the approved public summary"}'
 TASK_REF = "sha256:" + sha256(TASK).hexdigest()
+GRANT_REF = "urn:pcp:grant:effect-1"
+EFFECT = {
+    "action": "send",
+    "destination": "urn:example:public-summary",
+    "purpose": "x.xchat.fulfill",
+}
 
 
 def envelope(envelope_id, move, seq, signer, payload, parent=None):
@@ -29,29 +35,46 @@ class ExecutionProfileTests(unittest.TestCase):
     def setUp(self):
         self.runtime = Runtime()
         self.runtime.submit(envelope("e1", "delegate", 1, A, {"assignee": B, "task_ref": TASK_REF}))
-        self.grants = {("context-1", B, "e1", TASK_REF)}
+        self.action_grants = {(GRANT_REF, B, TASK_REF, tuple(EFFECT.items()))}
+        self.disclosures = {("bundle-1", GRANT_REF, B, "e1", TASK_REF, tuple(EFFECT.items()))}
         self.executed = []
 
-    def verify_context(self, request):
+    def authorize_action(self, request):
         return (
             request["thread"] == "thread-1"
             and request["recipient"] == request["to_principal"]
-            and (request["context_ref"], request["recipient"], request["installing_envelope_id"], request["task_ref"])
-            in self.grants
+            and (request["grant_ref"], request["recipient"], request["task_ref"], tuple(request["effect"].items()))
+            in self.action_grants
+        )
+
+    def verify_disclosure(self, request):
+        return (
+            request["recipient"] == request["to_principal"]
+            and (
+                request["disclosure_ref"],
+                request["grant_ref"],
+                request["recipient"],
+                request["installing_envelope_id"],
+                request["task_ref"],
+                tuple(request["effect"].items()),
+            ) in self.disclosures
         )
 
     def execute(self, task, checkpoint):
         self.executed.append((task, checkpoint))
         return "sent"
 
-    def run_effect(self, *, runtime=None, task=TASK, context_ref="context-1", now=1):
+    def run_effect(self, *, runtime=None, task=TASK, disclosure_ref="bundle-1", now=1):
         return run_authorized(
             runtime or self.runtime,
             "thread-1",
             authoritative_now=now,
             task_bytes=task,
-            context_ref=context_ref,
-            verify_context=self.verify_context,
+            grant_ref=GRANT_REF,
+            disclosure_ref=disclosure_ref,
+            effect=EFFECT,
+            authorize_action=self.authorize_action,
+            verify_disclosure=self.verify_disclosure,
             execute=self.execute,
         )
 
@@ -61,7 +84,7 @@ class ExecutionProfileTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, code)
         self.assertEqual(self.executed, [])
 
-    def test_digest_pinned_task_and_current_context_execute(self):
+    def test_digest_pinned_task_and_current_disclosure_execute(self):
         result = self.run_effect()
         self.assertEqual(result["result"], "sent")
         self.assertEqual(result["checkpoint"]["installing_envelope_id"], "e1")
@@ -77,26 +100,29 @@ class ExecutionProfileTests(unittest.TestCase):
 
     def test_handoff_requires_fresh_recipient_authority(self):
         self.runtime.submit(envelope("e2", "handoff", 2, B, {"to": C}, "e1"))
-        self.assert_denied("LEGATUS_PROFILE_E_CONTEXT_AUTHORITY", now=2)
-        self.grants.add(("context-2", C, "e2", TASK_REF))
-        result = self.run_effect(context_ref="context-2", now=2)
+        self.assert_denied("LEGATUS_PROFILE_E_ACTION_AUTHORITY", now=2)
+        self.action_grants.add((GRANT_REF, C, TASK_REF, tuple(EFFECT.items())))
+        self.assert_denied("LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION", now=2)
+        self.disclosures.add(("bundle-2", GRANT_REF, C, "e2", TASK_REF, tuple(EFFECT.items())))
+        result = self.run_effect(disclosure_ref="bundle-2", now=2)
         self.assertEqual(result["checkpoint"]["installing_envelope_id"], "e2")
         self.assertEqual(result["checkpoint"]["from_principal"], B)
 
     def test_same_recipient_handoff_still_requires_fresh_authority(self):
         self.runtime.submit(envelope("e2", "handoff", 2, B, {"to": B}, "e1"))
-        self.assert_denied("LEGATUS_PROFILE_E_CONTEXT_AUTHORITY", now=2)
-        self.grants.add(("context-2", B, "e2", TASK_REF))
-        self.assertEqual(self.run_effect(context_ref="context-2", now=2)["result"], "sent")
+        self.assert_denied("LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION", now=2)
+        self.disclosures.add(("bundle-2", GRANT_REF, B, "e2", TASK_REF, tuple(EFFECT.items())))
+        self.assertEqual(self.run_effect(disclosure_ref="bundle-2", now=2)["result"], "sent")
 
     def test_gated_handoff_waits_for_approval_and_binds_approval_event(self):
         self.runtime.submit(envelope("e2", "handoff", 2, B, {"to": C, "gate": True, "approver": A}, "e1"))
         self.assert_denied("LEGATUS_PROFILE_E_STATE", now=2)
         self.runtime.submit(envelope("e3", "approve", 3, A, {"of": "e2"}, "e2"))
-        self.grants.add(("context-2", C, "e2", TASK_REF))
-        self.assert_denied("LEGATUS_PROFILE_E_CONTEXT_AUTHORITY", context_ref="context-2", now=3)
-        self.grants.add(("context-3", C, "e3", TASK_REF))
-        checkpoint = self.run_effect(context_ref="context-3", now=3)["checkpoint"]
+        self.action_grants.add((GRANT_REF, C, TASK_REF, tuple(EFFECT.items())))
+        self.disclosures.add(("bundle-2", GRANT_REF, C, "e2", TASK_REF, tuple(EFFECT.items())))
+        self.assert_denied("LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION", disclosure_ref="bundle-2", now=3)
+        self.disclosures.add(("bundle-3", GRANT_REF, C, "e3", TASK_REF, tuple(EFFECT.items())))
+        checkpoint = self.run_effect(disclosure_ref="bundle-3", now=3)["checkpoint"]
         self.assertEqual(checkpoint["installing_envelope_id"], "e3")
         self.assertEqual(checkpoint["from_principal"], B)
 
@@ -117,18 +143,40 @@ class ExecutionProfileTests(unittest.TestCase):
         runtime.reconcile_pcp()
         self.assertEqual(self.run_effect(runtime=runtime)["result"], "sent")
 
-    def test_context_verifier_failure_is_closed(self):
+    def test_disclosure_verifier_failure_is_closed(self):
         with self.assertRaises(ProfileDenied) as caught:
             run_authorized(
                 self.runtime,
                 "thread-1",
                 authoritative_now=1,
                 task_bytes=TASK,
-                context_ref="context-1",
-                verify_context=lambda _request: (_ for _ in ()).throw(RuntimeError("offline")),
+                grant_ref=GRANT_REF,
+                disclosure_ref="bundle-1",
+                effect=EFFECT,
+                authorize_action=self.authorize_action,
+                verify_disclosure=lambda _request: (_ for _ in ()).throw(RuntimeError("offline")),
                 execute=self.execute,
             )
-        self.assertEqual(caught.exception.code, "LEGATUS_PROFILE_E_CONTEXT_AUTHORITY")
+        self.assertEqual(caught.exception.code, "LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION")
+        self.assertEqual(self.executed, [])
+
+    def test_action_authority_failure_is_closed_before_disclosure(self):
+        verified = []
+        with self.assertRaises(ProfileDenied) as caught:
+            run_authorized(
+                self.runtime,
+                "thread-1",
+                authoritative_now=1,
+                task_bytes=TASK,
+                grant_ref="urn:pcp:grant:missing",
+                disclosure_ref="bundle-1",
+                effect=EFFECT,
+                authorize_action=self.authorize_action,
+                verify_disclosure=lambda _request: verified.append(True),
+                execute=self.execute,
+            )
+        self.assertEqual(caught.exception.code, "LEGATUS_PROFILE_E_ACTION_AUTHORITY")
+        self.assertEqual(verified, [])
         self.assertEqual(self.executed, [])
 
     def test_journal_comparison_quarantines_fork(self):

@@ -371,11 +371,14 @@ def case_profile_task_revision() -> None:
     runtime = Runtime()
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
     executed: list[bytes] = []
+    effect = {"action": "send", "destination": "public-summary", "purpose": "x.xchat.fulfill"}
 
     def run_task(candidate: bytes) -> dict:
         return run_authorized(
             runtime, "t1", authoritative_now=1, task_bytes=candidate,
-            context_ref="bundle-1", verify_context=lambda request: (
+            grant_ref="urn:pcp:grant:effect-1", disclosure_ref="urn:cl:bundle:disclosure-1",
+            effect=effect, authorize_action=lambda request: request["recipient"] == B,
+            verify_disclosure=lambda request: (
                 request["recipient"] == B
                 and request["installing_envelope_id"] == "e1"
                 and request["task_digest"] == sha256(task).hexdigest()
@@ -401,11 +404,14 @@ def case_profile_handoff_recipient() -> None:
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
     runtime.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
     executed: list[str] = []
+    effect = {"action": "send", "destination": "public-summary", "purpose": "x.xchat.fulfill"}
 
     def run_with(issuer_event: str, recipient: str) -> dict:
         return run_authorized(
             runtime, "t1", authoritative_now=2, task_bytes=task,
-            context_ref="bundle-1", verify_context=lambda request: (
+            grant_ref="urn:pcp:grant:effect-1", disclosure_ref="urn:cl:bundle:disclosure-1",
+            effect=effect, authorize_action=lambda request: request["recipient"] == C,
+            verify_disclosure=lambda request: (
                 request["installing_envelope_id"] == issuer_event
                 and request["recipient"] == recipient
             ),
@@ -415,13 +421,13 @@ def case_profile_handoff_recipient() -> None:
     try:
         run_with("e1", B)
     except ProfileDenied as exc:
-        _expect(exc.code, "LEGATUS_PROFILE_E_CONTEXT_AUTHORITY", "old recipient")
+        _expect(exc.code, "LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION", "old recipient")
     else:
-        raise AssertionError("old recipient authority executed after handoff")
+        raise AssertionError("old recipient disclosure executed after handoff")
     _expect(executed, [], "handoff effect isolation")
     result = run_with("e2", C)
     _expect(result["checkpoint"]["from_principal"], B, "handoff origin")
-    _expect(executed, [C], "fresh recipient authority")
+    _expect(executed, [C], "fresh recipient disclosure authorization")
 
 
 def case_profile_fork_quarantine() -> None:

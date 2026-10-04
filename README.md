@@ -43,7 +43,7 @@ A Legatus envelope may carry opaque references to neighboring systems. It does n
 | [Causal transcript](spec/05-causal-transcript.md) | Human-readable thread export |
 | [Operations harness](spec/06-ops-harness.md) | Retry, partition, recovery, and incident drills |
 | [Transport and governance](spec/07-transport-governance.md) | Versioning, transport profiles, and interoperability |
-| [Execution authority profile](spec/08-execution-authority-profile.md) | Digest-bound task bytes and fresh Context Layer recipient authority at product execution |
+| [Execution authority profile](spec/08-execution-authority-profile.md) | Digest-bound task bytes, PCP action authority, and recipient-bound Context Layer disclosure authorization |
 | [Machine schemas](schemas/) | Bounded envelope, journal, response, PCP, and transcript contracts |
 | [Conformance status](docs/harness.md) | Current evidence and its limits |
 | [Known limitations](docs/known-limitations.md) | Open protocol issues that block production claims |
@@ -67,8 +67,9 @@ This repository includes a dependency-free Python reference model, a determinist
 ```shell
 python -m conformance.run
 python -m unittest discover -s tests -v
+python -m conformance.trace
 ```
 
 The runner exercises protocol transitions, durable timeout replay, writer fencing, PCP request/error mapping, reservation commit/release and crash reconciliation, strict bounds, idempotency, and the unsigned transcript marker. `JournalStore` is in-process test storage and `FixtureVerifier` performs no cryptography or budget accounting. Production conformance requires separate evidence for durable storage, distributed fencing or consensus, PCP cryptography and reservation persistence, transport adapters, and fault injection.
 
-The optional execution profile adds a reference check for a signed digest-bound `task_ref`, current floor and writer authority, completed PCP finalization, and fresh Context Layer recipient authority. It does not change core envelope compatibility or issue Context Layer bundles.
+The optional execution profile adds a reference check for a signed digest-bound `task_ref`, current floor and writer authority, completed PCP finalization, a live principal-signed PCP grant for the requested effect, and fresh recipient-bound Context Layer disclosure authorization. It does not change core envelope compatibility or issue grants or Context Layer bundles.

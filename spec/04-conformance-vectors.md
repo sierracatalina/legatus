@@ -398,7 +398,7 @@ These vectors use [the out-of-band execution authority profile](08-execution-aut
 
 ### V-080 digest-pinned task
 
-setup: a PCP-authorized delegate whose signed `task_ref` is `sha256:` plus the digest of immutable task manifest bytes. The thread is running, the PCP commit is finalized, and a trusted Context Layer verifier approves the current recipient and installation event. expected: the adapter may dispatch only those exact bytes under the current writer fence.
+setup: a PCP-authorized delegate whose signed `task_ref` is `sha256:` plus the digest of immutable task manifest bytes. The thread is running, the PCP commit is finalized, a live principal-signed PCP grant authorizes the requested effect, and a trusted Context Layer verifier approves recipient-bound disclosure for the current recipient and installation event. expected: the adapter may dispatch only those exact bytes under the current writer fence.
 
 ### V-081 altered or mutable task
 
@@ -406,11 +406,11 @@ setup: V-080 with one task byte changed, or a legacy `task_ref` pointing to a mu
 
 ### V-082 handoff recipient
 
-setup: V-080 followed by ungated handoff B to C. Supply B's prior bundle, or C's authority bound to the previous installation event. expected: `LEGATUS_PROFILE_E_CONTEXT_AUTHORITY`, no effect. Fresh C authority bound to the committed handoff's id and journal position may proceed.
+setup: V-080 followed by ungated handoff B to C. Supply B's prior bundle, or C's disclosure authorization bound to the previous installation event. expected: `LEGATUS_PROFILE_E_DISCLOSURE_AUTHORIZATION`, no effect. Fresh C disclosure authorization bound to the committed handoff's id and journal position may proceed only when C also has a live PCP grant for the effect.
 
 ### V-083 gated and same-recipient handoff
 
-setup: a gated handoff B to C. While approval is pending, execution is refused. After approval, the installation event is the committed `approve` envelope. A grant bound only to the proposed handoff is refused. A handoff B to B also requires fresh authority for its new event.
+setup: a gated handoff B to C. While approval is pending, execution is refused. After approval, the installation event is the committed `approve` envelope. Disclosure authorization bound only to the proposed handoff is refused. A handoff B to B also requires fresh disclosure authorization for its new event; action authority still comes from C's live PCP grant.
 
 ### V-084 stale view and uncertainty
 

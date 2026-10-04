@@ -59,7 +59,7 @@ No vault body, no grant body, no bundle, no receipt document, no transport metad
 
 ## 3. Payload by move
 
-All payload values that are principal ids are opaque strings. `task_ref` is an opaque string the rail does not interpret (not a Context Layer type). Products that execute the delegated task can adopt the [digest-bound execution authority profile](08-execution-authority-profile.md); it checks task bytes and recipient authority outside this state machine.
+All payload values that are principal ids are opaque strings. `task_ref` is an opaque string the rail does not interpret (not a Context Layer type). Products that execute the delegated task can adopt the [digest-bound execution authority profile](08-execution-authority-profile.md); it checks task bytes, PCP action authority, and recipient-bound Context Layer disclosure authorization outside this state machine.
 
 ### 3.1 delegate
 
