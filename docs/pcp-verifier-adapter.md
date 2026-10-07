@@ -36,10 +36,10 @@ checks in the fixture harness do not authenticate the source of a journal.
 
 ## Schema provenance
 
-`schemas/pcp-source.json` records the approved merged PCP source commit and
+`schemas/pcp-source.json` records the immutable PCP source commit and
 SHA-256 for all nine `pcp*.schema.json` files. Their upstream `$id`, references,
-titles and bytes are preserved. In particular, historical names in pinned
-upstream titles remain until the PCP rename is approved and the pin refreshed.
+titles and bytes are preserved. The current source is the tested Purpose-bound Capability Protocol rename
+revision; PCP PR #3 must merge before this dependent pin is finalized.
 
 Run `python scripts/check_pcp_schemas.py` for local drift detection. With an
 upstream git checkout, use `--upstream <checkout>` to compare each file with

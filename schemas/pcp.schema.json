@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sierracatalina.com/pcp/v0.1/pcp.schema.json",
-  "title": "Personal Context Protocol v0.1 core objects",
+  "title": "Purpose-bound Capability Protocol v0.1 core objects",
   "oneOf": [
     { "$ref": "#/$defs/identity" },
     { "$ref": "#/$defs/grant" },

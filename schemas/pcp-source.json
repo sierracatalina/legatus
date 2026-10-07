@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/sierracatalina/PCP",
-  "commit": "0cd889a3b5fd64a99276596cd25ee3c9eddcfd80",
+  "commit": "329ac5275a5cb11f80ab60049961bb56ac0c1e84",
   "files": {
     "pcp-aaa-action-binding.schema.json": "cb8d4e5ca3b75e0bb64fd51c9054004fe446c96f196e9f2238d433fd4dbc9854",
     "pcp-budget-command.schema.json": "139ad541fad6288bca92c6966ed49b74e23ed14e1cf4538a35652d2d01fed469",
@@ -10,6 +10,6 @@
     "pcp-result.schema.json": "a5014589e83305913877c97a946effd435b5970ac91f451aec9a554aef9ce80a",
     "pcp-verifier-request.schema.json": "1e3ed132c466f73a9e6bf319450f94e34094fc03a55d2149752099f36c82c364",
     "pcp-verifier-result.schema.json": "972d040d254285d6ea4189c386705a48df1501b4fc34114a5dfddc2c0ed8b620",
-    "pcp.schema.json": "30fe36f4824bd5a38344fd0ec97badff2bf30aa03b1967d000b5556c6b02727a"
+    "pcp.schema.json": "efcac423e81b972cd138b56bc891848aca2147f5c8fcd190ab6d6f021519d384"
   }
 }
