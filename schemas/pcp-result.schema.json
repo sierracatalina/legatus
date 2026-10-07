@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sierracatalina.com/legatus/v0.1/pcp-result.schema.json",
+  "$id": "https://sierracatalina.com/pcp/v0.1/pcp-result.schema.json",
   "title": "Out-of-band PCP authority result",
   "type": "object",
   "additionalProperties": false,
@@ -9,7 +9,9 @@
     "legatus": { "const": 0 },
     "kind": { "const": "pcp_result" },
     "status": { "const": "deny" },
-    "code": { "enum": ["grant_not_found", "expired", "revoked", "scope_mismatch", "budget_exhausted", "unavailable"] },
+    "code": {
+      "enum": ["grant_not_found", "expired", "revoked", "scope_mismatch", "budget_exhausted", "unavailable"]
+    },
     "retriable": { "type": "boolean" },
     "envelope_id": { "$ref": "#/$defs/id" },
     "thread": { "$ref": "#/$defs/id" }
@@ -22,6 +24,11 @@
     }
   ],
   "$defs": {
-    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    }
   }
 }

@@ -1,0 +1,22 @@
+{
+  "generator": "Node crypto Ed25519 and independently implemented ECMAScript RFC 8785 bytes; synthetic key; public key only",
+  "public_key": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+  "canonical_bytes": "{\"context\":\"pcp-legatus-v1\",\"envelope\":{\"clock\":{\"now\":100,\"seq\":1},\"id\":\"unicode-1\",\"legatus\":0,\"parents\":[],\"payload\":{\"assignee\":\"urn:pcp:principal:worker\",\"task_ref\":\"work-Résumé-😀\"},\"signer\":\"urn:pcp:principal:alice\",\"thread\":\"thread-1\",\"type\":\"delegate\"},\"grant_id\":\"urn:pcp:grant:grant-1\",\"key_id\":\"urn:pcp:key:alice-1\",\"purpose\":\"legatus.delegate\",\"signer_id\":\"urn:pcp:principal:alice\"}",
+  "envelope": {
+    "legatus": 0,
+    "id": "unicode-1",
+    "thread": "thread-1",
+    "type": "delegate",
+    "parents": [],
+    "clock": {
+      "seq": 1,
+      "now": 100
+    },
+    "signer": "urn:pcp:principal:alice",
+    "payload": {
+      "assignee": "urn:pcp:principal:worker",
+      "task_ref": "work-Résumé-😀"
+    },
+    "sig": "pcp1.eyJjb250ZXh0IjoicGNwLWxlZ2F0dXMtdjEiLCJncmFudF9pZCI6InVybjpwY3A6Z3JhbnQ6Z3JhbnQtMSIsImtleV9pZCI6InVybjpwY3A6a2V5OmFsaWNlLTEiLCJwdXJwb3NlIjoibGVnYXR1cy5kZWxlZ2F0ZSIsInNpZ25lcl9pZCI6InVybjpwY3A6cHJpbmNpcGFsOmFsaWNlIn0.9Kb-8RTtjGaNGmNOjBOQDwFL3ylFxG0q-WrKm2OfdTyLUtgAKCXYd2YEjf58_hKSuA0JFE3hGosVOrlqVAuEAA"
+  }
+}

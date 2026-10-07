@@ -38,6 +38,7 @@ A Legatus envelope may carry opaque references to neighboring systems. It does n
 | [Envelope, transitions, clock, and errors](spec/01-envelope-transitions-clock-errors.md) | Normative in-band protocol |
 | [Envelope extract](spec/envelope.md) | Compact schema and invariants |
 | [Signer verification](spec/02-signer-verification.md) | Dependency on PCP identity and signature verification |
+| [Verified PCP adapter](docs/pcp-verifier-adapter.md) | Real Ed25519/JCS proof verification, trusted PCP callbacks, and canonical schema pins |
 | [Runtime paths](spec/03-runtime-paths.md) | Commit, timeout, abort, recovery, and submission |
 | [Conformance vectors](spec/04-conformance-vectors.md) | Portable protocol cases |
 | [Causal transcript](spec/05-causal-transcript.md) | Human-readable thread export |

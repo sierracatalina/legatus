@@ -33,7 +33,7 @@ def envelope(envelope_id, move, seq, signer, payload, parent=None):
 
 class ExecutionProfileTests(unittest.TestCase):
     def setUp(self):
-        self.runtime = Runtime()
+        self.runtime = Runtime(fixture_mode=True)
         self.runtime.submit(envelope("e1", "delegate", 1, A, {"assignee": B, "task_ref": TASK_REF}))
         self.action_grants = {(GRANT_REF, B, TASK_REF, tuple(EFFECT.items()))}
         self.disclosures = {("bundle-1", GRANT_REF, B, "e1", TASK_REF, tuple(EFFECT.items()))}
@@ -94,7 +94,7 @@ class ExecutionProfileTests(unittest.TestCase):
 
     def test_mutated_task_or_mutable_reference_cannot_execute(self):
         self.assert_denied("LEGATUS_PROFILE_E_TASK_REVISION", task=TASK + b" and private notes")
-        legacy = Runtime()
+        legacy = Runtime(fixture_mode=True)
         legacy.submit(envelope("e1", "delegate", 1, A, {"assignee": B, "task_ref": "mutable://task"}))
         self.assert_denied("LEGATUS_PROFILE_E_TASK_REVISION", runtime=legacy)
 
@@ -128,7 +128,7 @@ class ExecutionProfileTests(unittest.TestCase):
 
     def test_stale_view_and_stale_writer_cannot_execute(self):
         store = self.runtime.store
-        stale_view = Runtime(store)
+        stale_view = Runtime(store, fixture_mode=True)
         self.runtime.submit(envelope("e2", "handoff", 2, B, {"to": C}, "e1"))
         self.assert_denied("LEGATUS_PROFILE_E_STALE_VIEW", runtime=stale_view, now=2)
         store.acquire_writer("writer-2", 2)
@@ -183,7 +183,7 @@ class ExecutionProfileTests(unittest.TestCase):
         left = self.runtime.store.records[:]
         self.runtime.submit(envelope("e2", "handoff", 2, B, {"to": C}, "e1"))
         right = self.runtime.store.records[:]
-        other = Runtime()
+        other = Runtime(fixture_mode=True)
         other.submit(envelope("e1", "delegate", 1, A, {"assignee": B, "task_ref": TASK_REF}))
         other.submit(envelope("e2", "handoff", 2, B, {"to": A}, "e1"))
         fork = other.store.records[:]
@@ -195,7 +195,7 @@ class ExecutionProfileTests(unittest.TestCase):
             journal_relation(left, [{"position": 2}])
 
     def test_due_timeout_blocks_effect(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, A, {
             "assignee": B, "task_ref": TASK_REF, "deadline_now": 1,
         }))

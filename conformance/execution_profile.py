@@ -38,7 +38,7 @@ def journal_relation(left: list[dict[str, Any]], right: list[dict[str, Any]]) ->
     for history in (left, right):
         try:
             last_epoch = history[-1]["writer_epoch"] if history else 1
-            Runtime(JournalStore(history, writer_epoch=last_epoch))
+            Runtime(JournalStore(history, writer_epoch=last_epoch), fixture_mode=True)
         except Exception as exc:  # malformed journals fail closed at this comparison boundary
             raise ProfileDenied("LEGATUS_PROFILE_E_INVALID_JOURNAL") from exc
     common = min(len(left), len(right))

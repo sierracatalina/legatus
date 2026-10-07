@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/pcp/v0.1/pcp-budget-command.schema.json",
+  "title": "PCP v0.1 atomic budget ledger commands",
+  "oneOf": [
+    { "$ref": "#/$defs/reserve" },
+    { "$ref": "#/$defs/commit" },
+    { "$ref": "#/$defs/release" }
+  ],
+  "$defs": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "grantId": {
+      "type": "string",
+      "pattern": "^urn:pcp:grant:[A-Za-z0-9._~-]+$"
+    },
+    "subjectId": {
+      "type": "string",
+      "pattern": "^urn:pcp:(?:principal|agent|device):[A-Za-z0-9._~-]+$"
+    },
+    "reservationId": {
+      "type": "string",
+      "pattern": "^urn:pcp:reservation:[A-Za-z0-9._~-]+$"
+    },
+    "spend": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["unit", "amount"],
+        "properties": {
+          "unit": {
+            "enum": ["usd_micros", "api_calls", "model_tokens", "milliseconds", "actions"]
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      }
+    },
+    "reserve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "grant_id",
+        "subject_id",
+        "purpose",
+        "audience",
+        "action_id",
+        "idempotency_key",
+        "request_digest",
+        "spend",
+        "observed_at",
+        "reservation_expires_at"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_reserve_request" },
+        "id": { "type": "string", "pattern": "^urn:pcp:request:[A-Za-z0-9._~-]+$" },
+        "grant_id": { "$ref": "#/$defs/grantId" },
+        "subject_id": { "$ref": "#/$defs/subjectId" },
+        "purpose": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+        },
+        "audience": { "type": "string", "minLength": 3, "maxLength": 512 },
+        "action_id": { "type": "string", "minLength": 3, "maxLength": 512 },
+        "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 256 },
+        "request_digest": { "$ref": "#/$defs/digest" },
+        "spend": { "$ref": "#/$defs/spend" },
+        "observed_at": { "$ref": "#/$defs/timestamp" },
+        "reservation_expires_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "reservation_id",
+        "idempotency_key",
+        "result_digest",
+        "receipt_id",
+        "observed_at"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_commit_request" },
+        "id": { "type": "string", "pattern": "^urn:pcp:request:[A-Za-z0-9._~-]+$" },
+        "reservation_id": { "$ref": "#/$defs/reservationId" },
+        "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 256 },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "receipt_id": { "type": "string", "pattern": "^urn:pcp:receipt:[A-Za-z0-9._~-]+$" },
+        "observed_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "reservation_id",
+        "idempotency_key",
+        "reason_code",
+        "observed_at"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_release_request" },
+        "id": { "type": "string", "pattern": "^urn:pcp:request:[A-Za-z0-9._~-]+$" },
+        "reservation_id": { "$ref": "#/$defs/reservationId" },
+        "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 256 },
+        "reason_code": {
+          "enum": ["action_rejected", "request_cancelled", "reservation_expired", "grant_revoked", "verifier_error"]
+        },
+        "observed_at": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}
