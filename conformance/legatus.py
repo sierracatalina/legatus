@@ -459,11 +459,14 @@ class Runtime:
         writer_epoch: int = 1,
         verifier: Verifier | None = None,
         finalizer: Finalizer | None = None,
+        fixture_mode: bool = False,
     ) -> None:
         self.store = store or JournalStore(writer_id=writer_id, writer_epoch=writer_epoch)
         self.writer_id = writer_id
         self.writer_epoch = writer_epoch
-        self.verifier = verifier or FixtureVerifier()
+        if verifier is None and not fixture_mode:
+            raise ValueError("provide a PCP verifier or explicitly select fixture_mode=True")
+        self.verifier = verifier if verifier is not None else FixtureVerifier()
         inherited_finalizer = getattr(self.verifier, "finalize", None)
         self.finalizer = finalizer if finalizer is not None else inherited_finalizer
         self._lock = RLock()

@@ -19,7 +19,7 @@ Legatus v0.1 is a protocol draft with an executable in-process reference model.
 
 ### PCP cryptography
 
-`FixtureVerifier` accepts only `SIG_PENDING` and performs no cryptography, grant lookup, expiry/revocation evaluation, or budget accounting. Its synthetic finalizer stores requests in memory. Production adapters must implement [the PCP verifier and reservation-finalization profile](../spec/02-signer-verification.md), persist PCP reservation state, and disable fixture verification.
+`PCPVerifier` now implements real Ed25519/JCS detached-proof verification and strict callback contracts; see [the adapter](pcp-verifier-adapter.md). Key resolution, authenticated grant lookup, expiry/revocation evaluation, and budget accounting remain trusted PCP deployment responsibilities. `FixtureVerifier` still performs no cryptography and accepts only `SIG_PENDING`, but callers must explicitly select it or `fixture_mode=True`; `Runtime()` no longer silently enables it. Production transports must supply the real adapter and authenticated PCP callbacks, persist reservation state, and disable fixture verification.
 
 The reference runtime can retry failed finalization during its process lifetime and reconstruct commit handoffs from journaled authorization identifiers after restart. A rejected candidate has no Legatus journal record, so a process crash can lose an in-memory release handoff. PCP reservation expiry bounds that case. Production deployments may add a durable outbox. Journal append and PCP finalization remain two systems joined through idempotency and reconciliation rather than one distributed transaction.
 

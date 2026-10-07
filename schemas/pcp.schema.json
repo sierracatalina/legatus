@@ -1,0 +1,685 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sierracatalina.com/pcp/v0.1/pcp.schema.json",
+  "title": "Personal Context Protocol v0.1 core objects",
+  "oneOf": [
+    { "$ref": "#/$defs/identity" },
+    { "$ref": "#/$defs/grant" },
+    { "$ref": "#/$defs/revocation" },
+    { "$ref": "#/$defs/budgetReservation" },
+    { "$ref": "#/$defs/budgetCommit" },
+    { "$ref": "#/$defs/budgetRelease" },
+    { "$ref": "#/$defs/receipt" },
+    { "$ref": "#/$defs/export" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "purpose": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+      "maxLength": 160
+    },
+    "principalId": {
+      "type": "string",
+      "pattern": "^urn:pcp:principal:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "agentId": {
+      "type": "string",
+      "pattern": "^urn:pcp:agent:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^urn:pcp:device:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "subjectId": {
+      "oneOf": [
+        { "$ref": "#/$defs/principalId" },
+        { "$ref": "#/$defs/agentId" },
+        { "$ref": "#/$defs/deviceId" }
+      ]
+    },
+    "grantId": {
+      "type": "string",
+      "pattern": "^urn:pcp:grant:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "familyId": {
+      "type": "string",
+      "pattern": "^urn:pcp:family:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "keyId": {
+      "type": "string",
+      "pattern": "^urn:pcp:key:[A-Za-z0-9._~-]+$",
+      "maxLength": 256
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "key_id", "value"],
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    },
+    "publicKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "key_id", "public_key", "status", "valid_from"],
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "key_id": { "$ref": "#/$defs/keyId" },
+        "public_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "status": {
+          "enum": ["active", "retired", "revoked"]
+        },
+        "valid_from": { "$ref": "#/$defs/timestamp" },
+        "valid_until": {
+          "oneOf": [
+            { "$ref": "#/$defs/timestamp" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "type", "id", "kind", "public_keys", "created_at"],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_principal" },
+        "id": { "$ref": "#/$defs/principalId" },
+        "kind": { "const": "principal" },
+        "public_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/publicKey" }
+        },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "type", "id", "kind", "controller_principal_id", "created_at"],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_agent" },
+        "id": { "$ref": "#/$defs/agentId" },
+        "kind": { "const": "agent" },
+        "controller_principal_id": { "$ref": "#/$defs/principalId" },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "type", "id", "kind", "controller_principal_id", "public_keys", "created_at"],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_device" },
+        "id": { "$ref": "#/$defs/deviceId" },
+        "kind": { "const": "device" },
+        "controller_principal_id": { "$ref": "#/$defs/principalId" },
+        "public_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/publicKey" }
+        },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "identity": {
+      "oneOf": [
+        { "$ref": "#/$defs/principal" },
+        { "$ref": "#/$defs/agent" },
+        { "$ref": "#/$defs/device" }
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "resources"],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+            "maxLength": 160
+          }
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "budgetLimit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "limit"],
+      "properties": {
+        "unit": {
+          "enum": ["usd_micros", "api_calls", "model_tokens", "milliseconds", "actions"]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "budgetSpend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "amount"],
+      "properties": {
+        "unit": {
+          "enum": ["usd_micros", "api_calls", "model_tokens", "milliseconds", "actions"]
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "family_id",
+        "issuer_id",
+        "subject_id",
+        "subject_kind",
+        "purpose",
+        "audience",
+        "scope",
+        "issued_at",
+        "not_before",
+        "expires_at",
+        "revocation_id",
+        "parent_grant_id",
+        "allow_subdelegation",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_grant" },
+        "id": { "$ref": "#/$defs/grantId" },
+        "family_id": { "$ref": "#/$defs/familyId" },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "subject_id": { "$ref": "#/$defs/subjectId" },
+        "subject_kind": { "enum": ["principal", "agent", "device"] },
+        "purpose": { "$ref": "#/$defs/purpose" },
+        "audience": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 512
+        },
+        "scope": { "$ref": "#/$defs/scope" },
+        "budget": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/budgetLimit" }
+        },
+        "issued_at": { "$ref": "#/$defs/timestamp" },
+        "not_before": {
+          "oneOf": [
+            { "$ref": "#/$defs/timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "expires_at": { "$ref": "#/$defs/timestamp" },
+        "revocation_id": {
+          "type": "string",
+          "pattern": "^urn:pcp:revocation:[A-Za-z0-9._~-]+$",
+          "maxLength": 256
+        },
+        "parent_grant_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/grantId" },
+            { "type": "null" }
+          ]
+        },
+        "allow_subdelegation": { "type": "boolean" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "issuer_id",
+        "grant_id",
+        "family_id",
+        "effective_at",
+        "reason_code",
+        "revision",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_revocation" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:revocation:[A-Za-z0-9._~-]+$",
+          "maxLength": 256
+        },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "grant_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/grantId" },
+            { "type": "null" }
+          ]
+        },
+        "family_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/familyId" },
+            { "type": "null" }
+          ]
+        },
+        "effective_at": { "$ref": "#/$defs/timestamp" },
+        "reason_code": {
+          "enum": ["user_stop", "key_compromise", "scope_change", "superseded", "other"]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "signature": { "$ref": "#/$defs/signature" }
+      },
+      "anyOf": [
+        { "properties": { "grant_id": { "type": "string" } } },
+        { "properties": { "family_id": { "type": "string" } } }
+      ]
+    },
+    "budgetReservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "grant_id",
+        "idempotency_key",
+        "request_digest",
+        "spend",
+        "ledger_revision",
+        "created_at",
+        "expires_at",
+        "issuer_id",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_reservation" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:reservation:[A-Za-z0-9._~-]+$"
+        },
+        "grant_id": { "$ref": "#/$defs/grantId" },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "request_digest": { "$ref": "#/$defs/digest" },
+        "spend": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/budgetSpend" }
+        },
+        "ledger_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "budgetCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "reservation_id",
+        "ledger_revision",
+        "committed_at",
+        "receipt_id",
+        "result_digest",
+        "issuer_id",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_commit" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:commit:[A-Za-z0-9._~-]+$"
+        },
+        "reservation_id": {
+          "type": "string",
+          "pattern": "^urn:pcp:reservation:[A-Za-z0-9._~-]+$"
+        },
+        "ledger_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "committed_at": { "$ref": "#/$defs/timestamp" },
+        "receipt_id": {
+          "type": "string",
+          "pattern": "^urn:pcp:receipt:[A-Za-z0-9._~-]+$"
+        },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "budgetRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "reservation_id",
+        "ledger_revision",
+        "released_at",
+        "reason_code",
+        "issuer_id",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_budget_release" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:release:[A-Za-z0-9._~-]+$"
+        },
+        "reservation_id": {
+          "type": "string",
+          "pattern": "^urn:pcp:reservation:[A-Za-z0-9._~-]+$"
+        },
+        "ledger_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "released_at": { "$ref": "#/$defs/timestamp" },
+        "reason_code": {
+          "enum": ["action_rejected", "request_cancelled", "reservation_expired", "grant_revoked", "verifier_error"]
+        },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "issuer_id",
+        "grant_id",
+        "subject_id",
+        "action_id",
+        "idempotency_key",
+        "request_digest",
+        "result_digest",
+        "outcome",
+        "reservation_id",
+        "budget_commit_id",
+        "evidence_refs",
+        "occurred_at",
+        "previous_receipt_digest",
+        "supersedes_receipt_id",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_receipt" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:receipt:[A-Za-z0-9._~-]+$"
+        },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "grant_id": { "$ref": "#/$defs/grantId" },
+        "subject_id": { "$ref": "#/$defs/subjectId" },
+        "action_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 512
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "request_digest": { "$ref": "#/$defs/digest" },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "outcome": { "enum": ["succeeded", "failed", "cancelled"] },
+        "reservation_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^urn:pcp:reservation:[A-Za-z0-9._~-]+$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "budget_commit_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^urn:pcp:commit:[A-Za-z0-9._~-]+$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["system", "id", "digest"],
+            "properties": {
+              "system": { "enum": ["pcp", "legatus", "context_layer", "aaa", "runtime"] },
+              "id": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "digest": { "$ref": "#/$defs/digest" }
+            }
+          }
+        },
+        "occurred_at": { "$ref": "#/$defs/timestamp" },
+        "previous_receipt_digest": {
+          "oneOf": [
+            { "$ref": "#/$defs/digest" },
+            { "type": "null" }
+          ]
+        },
+        "supersedes_receipt_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^urn:pcp:receipt:[A-Za-z0-9._~-]+$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "type", "code", "message", "retryable"],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_error" },
+        "code": {
+          "enum": [
+            "malformed",
+            "duplicate_property",
+            "unknown_property",
+            "unsupported_version",
+            "unknown_type",
+            "identity_collapse",
+            "unknown_subject",
+            "unknown_issuer",
+            "unsigned",
+            "invalid_proof",
+            "unknown_key",
+            "bad_signature",
+            "not_before",
+            "expired",
+            "revoked",
+            "budget_exhausted",
+            "purpose_mismatch",
+            "scope_invalid",
+            "delegate_forbidden",
+            "carrier_is_not_authority",
+            "recovery_is_not_a_grant",
+            "cl_type_forbidden",
+            "parser_record_forbidden",
+            "grant_binding_mismatch",
+            "key_binding_mismatch",
+            "proof_binding_mismatch",
+            "proof_signer_mismatch",
+            "proof_key_mismatch",
+            "proof_purpose_mismatch",
+            "proof_envelope_mismatch",
+            "grant_not_found",
+            "scope_mismatch",
+            "idempotency_conflict",
+            "reservation_not_live",
+            "receipt_chain_invalid",
+            "replay_detected",
+            "verification_unavailable",
+            "unavailable"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "retryable": { "type": "boolean" },
+        "path": {
+          "oneOf": [
+            { "type": "string", "maxLength": 512 },
+            { "type": "null" }
+          ]
+        },
+        "grant_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/grantId" },
+            { "type": "null" }
+          ]
+        },
+        "subject_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/subjectId" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "type",
+        "id",
+        "issuer_id",
+        "exported_at",
+        "identities",
+        "grants",
+        "revocations",
+        "ledger_events",
+        "receipts",
+        "signature"
+      ],
+      "properties": {
+        "spec_version": { "const": "pcp/0.1" },
+        "type": { "const": "pcp_export" },
+        "id": {
+          "type": "string",
+          "pattern": "^urn:pcp:export:[A-Za-z0-9._~-]+$"
+        },
+        "issuer_id": { "$ref": "#/$defs/principalId" },
+        "exported_at": { "$ref": "#/$defs/timestamp" },
+        "identities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identity" }
+        },
+        "grants": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/grant" }
+        },
+        "revocations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/revocation" }
+        },
+        "ledger_events": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/budgetReservation" },
+              { "$ref": "#/$defs/budgetCommit" },
+              { "$ref": "#/$defs/budgetRelease" }
+            ]
+          }
+        },
+        "receipts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/receipt" }
+        },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    }
+  }
+}

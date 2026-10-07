@@ -45,7 +45,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
 
     def test_seven_move_lifecycle(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         self.assertEqual(runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))["state"], "running")
         self.assertEqual(runtime.submit(envelope("e2", "handoff", 2, 2, B, {"to": C}, "e1"))["floor"], C)
         self.assertEqual(runtime.submit(envelope("e3", "fail", 3, 3, C, {"code": "FAIL_FAULT"}, "e2"))["state"], "failed")
@@ -53,13 +53,13 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(runtime.submit(envelope("e5", "cancel", 5, 5, A, {"code": "CANCEL_STOP"}, "e4"))["state"], "cancelled")
 
     def test_gate_and_approve(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "gate": True, "approver": A}))
         ack = runtime.submit(envelope("e2", "approve", 2, 2, A, {"of": "e1"}, "e1"))
         self.assertEqual((ack["state"], ack["floor"]), ("running", B))
 
     def test_timeout_record_makes_resume_replayable(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "gate": True, "approver": A, "deadline_now": 250}))
         timeout = runtime.advance_now("thread-1", 251)
         self.assertEqual((timeout["kind"], timeout["position"]), ("timeout", 2))
@@ -69,7 +69,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(recovered.threads["thread-1"].public(), runtime.threads["thread-1"].public())
 
     def test_candidate_clock_cannot_bypass_due_timeout(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "deadline_now": 250}))
         result = runtime.submit(envelope("e2", "handoff", 2, 251, B, {"to": C}, "e1"))
         self.assertEqual(result["code"], "LEGATUS_E_ILLEGAL_TRANSITION")
@@ -77,7 +77,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(runtime.threads["thread-1"].state, "paused")
 
     def test_rejected_candidate_clock_cannot_force_timeout(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "deadline_now": 250}))
         invalid_proof = envelope("e2", "handoff", 2, 251, B, {"to": C}, "e1", sig="bad")
         self.assertEqual(runtime.submit(invalid_proof)["code"], "LEGATUS_E_SIG")
@@ -88,7 +88,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual((len(runtime.store.records), runtime.threads["thread-1"].state), (1, "running"))
 
     def test_authoritative_clock_on_duplicate_still_records_timeout(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         candidate = envelope("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "deadline_now": 250})
         runtime.submit(candidate)
         duplicate = runtime.submit(candidate, runtime_now=251)
@@ -96,7 +96,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(runtime.threads["thread-1"].state, "paused")
 
     def test_recovery_appends_due_timeout_once(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "deadline_now": 2}))
         recovered = runtime.recover({"thread-1": 3})
         self.assertEqual((len(runtime.store.records), recovered.threads["thread-1"].state), (2, "paused"))
@@ -104,28 +104,28 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual((len(runtime.store.records), recovered_again.threads["thread-1"].state), (2, "paused"))
 
     def test_timeout_record_tamper_is_corruption(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "deadline_now": 2}))
         runtime.advance_now("thread-1", 3)
         records = deepcopy(runtime.store.records)
         records[1]["pending"] = "invented"
         with self.assertRaises(JournalCorrupt):
-            Runtime(JournalStore(records))
+            Runtime(JournalStore(records), fixture_mode=True)
 
     def test_fencing_rejects_old_writer_after_failover(self):
         store = JournalStore(writer_id="a", writer_epoch=1)
-        first = Runtime(store, writer_id="a", writer_epoch=1)
+        first = Runtime(store, writer_id="a", writer_epoch=1, fixture_mode=True)
         first.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         store.acquire_writer("b", 2)
         rejected = first.submit(envelope("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
         self.assertEqual(rejected["code"], "LEGATUS_E_WRITER_UNAVAILABLE")
-        second = Runtime(store, writer_id="b", writer_epoch=2)
+        second = Runtime(store, writer_id="b", writer_epoch=2, fixture_mode=True)
         self.assertEqual(second.submit(envelope("e2", "handoff", 2, 2, B, {"to": C}, "e1"))["outcome"], "committed")
 
     def test_stale_same_epoch_view_loses_position_compare_and_set(self):
         store = JournalStore(writer_id="a", writer_epoch=1)
-        first = Runtime(store, writer_id="a", writer_epoch=1)
-        stale = Runtime(store, writer_id="a", writer_epoch=1)
+        first = Runtime(store, writer_id="a", writer_epoch=1, fixture_mode=True)
+        stale = Runtime(store, writer_id="a", writer_epoch=1, fixture_mode=True)
         first.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         other_thread = make_envelope("e2", "thread-2", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
         rejected = stale.submit(other_thread)
@@ -133,9 +133,9 @@ class ProtocolTests(unittest.TestCase):
 
     def test_stale_transcript_uses_one_observed_journal_prefix(self):
         store = JournalStore(writer_id="a", writer_epoch=1)
-        current = Runtime(store, writer_id="a", writer_epoch=1)
+        current = Runtime(store, writer_id="a", writer_epoch=1, fixture_mode=True)
         current.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
-        stale = Runtime(store, writer_id="a", writer_epoch=1)
+        stale = Runtime(store, writer_id="a", writer_epoch=1, fixture_mode=True)
         current.submit(envelope("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
         transcript = stale.export_transcript("thread-1")
         self.assertEqual((transcript["seq_through"], transcript["journal_through"]), (1, 1))
@@ -393,7 +393,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(runtime.store.records), 0)
 
     def test_identical_duplicate_returns_typed_ack(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         candidate = envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
         first = runtime.submit(candidate)
         duplicate = runtime.submit(candidate)
@@ -402,7 +402,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(runtime.store.records), 1)
 
     def test_conflicting_duplicate_is_error(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         candidate = envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
         runtime.submit(candidate)
         changed = deepcopy(candidate)
@@ -410,14 +410,14 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(runtime.submit(changed)["code"], "LEGATUS_E_DUP_ID")
 
     def test_cancelled_state_precedes_floor_checks(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         runtime.submit(envelope("e2", "cancel", 2, 2, A, {"code": "CANCEL_STOP"}, "e1"))
         result = runtime.submit(envelope("e3", "handoff", 3, 3, C, {"to": B}, "e2"))
         self.assertEqual(result["code"], "LEGATUS_E_ALREADY_TERMINAL")
 
     def test_bounds_extra_keys_and_duplicate_json_members_fail(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         too_long = envelope("x" * 257, "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
         self.assertEqual(runtime.submit(too_long)["code"], "LEGATUS_E_SCHEMA")
         unsafe = envelope("e1", "delegate", 1, MAX_SAFE_INTEGER + 1, A, {"assignee": B, "task_ref": "w"})
@@ -431,7 +431,7 @@ class ProtocolTests(unittest.TestCase):
             parse_candidate('"' + ('x' * MAX_BODY_BYTES) + '"')
 
     def test_non_submit_principals_and_timestamp_boundaries(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         self.assertEqual(runtime.submit({"message": "delegate this"})["code"], "NOT_A_SUBMIT")
         wrong_signer = envelope("e1", "delegate", 1, 1, "urn:pcp:agent:a", {"assignee": B, "task_ref": "w"})
         self.assertEqual(runtime.submit(wrong_signer)["code"], "LEGATUS_E_SIG")
@@ -448,27 +448,27 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(runtime.submit(runtime_deadline, runtime_now=12)["code"], "LEGATUS_E_CLOCK_SKEW")
 
     def test_replay_rejects_extra_record_fields_and_epoch_regression(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         extra = deepcopy(runtime.store.records)
         extra[0]["debug"] = True
         with self.assertRaises(JournalCorrupt):
-            Runtime(JournalStore(extra))
+            Runtime(JournalStore(extra), fixture_mode=True)
         epoch_ahead = deepcopy(runtime.store.records)
         epoch_ahead[0]["writer_epoch"] = 2
         with self.assertRaises(JournalCorrupt):
-            Runtime(JournalStore(epoch_ahead, writer_epoch=1))
+            Runtime(JournalStore(epoch_ahead, writer_epoch=1), fixture_mode=True)
 
-        two = Runtime()
+        two = Runtime(fixture_mode=True)
         two.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         two.submit(envelope("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
         duplicate_authorization = deepcopy(two.store.records)
         duplicate_authorization[1]["authorization_id"] = duplicate_authorization[0]["authorization_id"]
         with self.assertRaises(JournalCorrupt):
-            Runtime(JournalStore(duplicate_authorization))
+            Runtime(JournalStore(duplicate_authorization), fixture_mode=True)
 
     def test_unsigned_fixture_transcript_is_explicit(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
         transcript = runtime.export_transcript("thread-1")
         self.assertEqual(transcript["integrity"], {"mode": "unsigned_fixture"})
@@ -477,7 +477,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(move["authorization_id"], "fixture-authorization:e1")
 
     def test_transcript_includes_timeout_journal_events(self):
-        runtime = Runtime()
+        runtime = Runtime(fixture_mode=True)
         runtime.submit(envelope("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "deadline_now": 2}))
         runtime.advance_now("thread-1", 3)
         transcript = runtime.export_transcript("thread-1")

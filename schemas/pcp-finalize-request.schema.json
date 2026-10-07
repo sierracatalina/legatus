@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sierracatalina.com/legatus/v0.1/pcp-finalize-request.schema.json",
-  "title": "Legatus PCP authorization finalization request",
+  "$id": "https://sierracatalina.com/pcp/v0.1/pcp-finalize-request.schema.json",
+  "title": "Legatus PCP reservation finalization request",
   "type": "object",
   "additionalProperties": false,
   "required": ["profile", "authorization_id", "outcome", "envelope_id", "thread", "journal_position"],
   "properties": {
     "profile": { "const": "pcp-legatus-v1" },
-    "authorization_id": { "$ref": "#/$defs/id" },
+    "authorization_id": { "$ref": "#/$defs/opaqueId" },
     "outcome": { "enum": ["commit", "release"] },
-    "envelope_id": { "$ref": "#/$defs/id" },
-    "thread": { "$ref": "#/$defs/id" },
+    "envelope_id": { "$ref": "#/$defs/opaqueId" },
+    "thread": { "$ref": "#/$defs/opaqueId" },
     "journal_position": {
       "oneOf": [
-        { "$ref": "#/$defs/safePositive" },
+        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         { "type": "null" }
       ]
     }
@@ -21,12 +21,19 @@
   "allOf": [
     {
       "if": { "properties": { "outcome": { "const": "commit" } }, "required": ["outcome"] },
-      "then": { "properties": { "journal_position": { "$ref": "#/$defs/safePositive" } } },
-      "else": { "properties": { "journal_position": { "type": "null" } } }
+      "then": { "properties": { "journal_position": { "type": "integer", "minimum": 1 } } }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "release" } }, "required": ["outcome"] },
+      "then": { "properties": { "journal_position": { "type": "null" } } }
     }
   ],
   "$defs": {
-    "id": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
-    "safePositive": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    }
   }
 }

@@ -124,6 +124,6 @@ An unavailable release handoff remains retryable during the process lifetime. PC
 
 ## Fixture mode
 
-`SIG_PENDING` is permitted only in the dependency-free conformance fixture verifier. It performs no cryptography and MUST NOT be enabled by a production transport.
+`SIG_PENDING` is permitted only in the explicitly selected dependency-free conformance fixture verifier. It performs no cryptography and MUST NOT be enabled by a production transport. `Runtime()` requires an explicit verifier; use `Runtime(fixture_mode=True)` only for fixtures. The [PCP adapter](../docs/pcp-verifier-adapter.md) verifies real detached proofs before a trusted PCP authority callback.
 
 Key custody, grant contents, revocation, reservation accounting, expiry, and carrier binding remain PCP responsibilities. Legatus stores no grant or key material.

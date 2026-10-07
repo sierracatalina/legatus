@@ -23,7 +23,7 @@ EFFECT = {
 
 
 def run_trace() -> dict:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(make_envelope(
         "delegate-1",
         "trace-thread",

@@ -62,7 +62,7 @@ def _expect(value, expected, message: str) -> None:
 
 
 def case_seven_moves() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     _expect(runtime.submit(env("e1", "delegate", 1, 10, A, {"assignee": B, "task_ref": "work-1"}))["state"], "running", "delegate")
     _expect(runtime.submit(env("e2", "handoff", 2, 11, B, {"to": C}, "e1"))["floor"], C, "handoff")
     _expect(runtime.submit(env("e3", "fail", 3, 12, C, {"code": "FAIL_FAULT"}, "e2"))["state"], "failed", "fail")
@@ -71,7 +71,7 @@ def case_seven_moves() -> None:
 
 
 def case_gate_and_approve() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     first = env("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "work-1", "gate": True, "approver": A})
     _expect(runtime.submit(first)["state"], "awaiting_approve", "gated delegate")
     approved = runtime.submit(env("e2", "approve", 2, 101, A, {"of": "e1"}, "e1"))
@@ -79,7 +79,7 @@ def case_gate_and_approve() -> None:
 
 
 def case_timeout_resume_replay() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     first = env("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "work-1", "gate": True, "approver": A, "deadline_now": 250})
     runtime.submit(first)
     timeout = runtime.advance_now("t1", 251)
@@ -91,7 +91,7 @@ def case_timeout_resume_replay() -> None:
 
 
 def case_timeout_precedes_candidate() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "deadline_now": 250}))
     rejected = runtime.submit(env("e2", "handoff", 2, 251, B, {"to": C}, "e1"))
     _expect(rejected["code"], "LEGATUS_E_ILLEGAL_TRANSITION", "post-timeout candidate")
@@ -99,7 +99,7 @@ def case_timeout_precedes_candidate() -> None:
 
 
 def case_rejected_clock_cannot_force_timeout() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 100, A, {"assignee": B, "task_ref": "w", "deadline_now": 250}))
     invalid = env("e2", "handoff", 2, 251, B, {"to": C}, "e1", sig="bad")
     _expect(runtime.submit(invalid)["code"], "LEGATUS_E_SIG", "invalid proof")
@@ -109,7 +109,7 @@ def case_rejected_clock_cannot_force_timeout() -> None:
 
 
 def case_recovery_appends_timeout_once() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "deadline_now": 2}))
     recovered = runtime.recover({"t1": 3})
     _expect((len(runtime.store.records), recovered.threads["t1"].state), (2, "paused"), "recovery timeout")
@@ -118,13 +118,13 @@ def case_recovery_appends_timeout_once() -> None:
 
 
 def case_timeout_tamper_rejected() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w", "deadline_now": 2}))
     runtime.advance_now("t1", 3)
     records = deepcopy(runtime.store.records)
     records[1]["deadline_now"] = 4
     try:
-        Runtime(JournalStore(records, writer_id="writer-1", writer_epoch=1))
+        Runtime(JournalStore(records, writer_id="writer-1", writer_epoch=1), fixture_mode=True)
     except JournalCorrupt:
         return
     raise AssertionError("tampered timeout record replayed")
@@ -132,19 +132,19 @@ def case_timeout_tamper_rejected() -> None:
 
 def case_writer_fencing() -> None:
     store = JournalStore(writer_id="writer-a", writer_epoch=1)
-    old = Runtime(store, writer_id="writer-a", writer_epoch=1)
+    old = Runtime(store, writer_id="writer-a", writer_epoch=1, fixture_mode=True)
     old.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
     store.acquire_writer("writer-b", 2)
     rejected = old.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
     _expect(rejected["code"], "LEGATUS_E_WRITER_UNAVAILABLE", "stale writer")
-    current = Runtime(store, writer_id="writer-b", writer_epoch=2)
+    current = Runtime(store, writer_id="writer-b", writer_epoch=2, fixture_mode=True)
     _expect(current.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))["outcome"], "committed", "current writer")
 
 
 def case_writer_compare_and_set() -> None:
     store = JournalStore(writer_id="writer-a", writer_epoch=1)
-    current = Runtime(store, writer_id="writer-a", writer_epoch=1)
-    stale_view = Runtime(store, writer_id="writer-a", writer_epoch=1)
+    current = Runtime(store, writer_id="writer-a", writer_epoch=1, fixture_mode=True)
+    stale_view = Runtime(store, writer_id="writer-a", writer_epoch=1, fixture_mode=True)
     current.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
     other_thread = env("e2", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}, thread="t2")
     rejected = stale_view.submit(other_thread)
@@ -315,7 +315,7 @@ def case_pcp_malformed_result() -> None:
 
 
 def case_schema_bounds() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     too_long = env("x" * 257, "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
     _expect(runtime.submit(too_long)["code"], "LEGATUS_E_SCHEMA", "id bound")
     unsafe = env("e1", "delegate", 1, MAX_SAFE_INTEGER + 1, A, {"assignee": B, "task_ref": "w"})
@@ -335,7 +335,7 @@ def case_schema_bounds() -> None:
 
 
 def case_protocol_boundaries() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     _expect(runtime.submit({"message": "delegate this"})["code"], "NOT_A_SUBMIT", "non-submit object")
     wrong_signer = env("e1", "delegate", 1, 1, "urn:pcp:agent:a", {"assignee": B, "task_ref": "w"})
     _expect(runtime.submit(wrong_signer)["code"], "LEGATUS_E_SIG", "signer namespace")
@@ -347,7 +347,7 @@ def case_protocol_boundaries() -> None:
 
 
 def case_duplicate_is_ack() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     candidate = env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"})
     _expect(runtime.submit(candidate)["outcome"], "committed", "first submit")
     _expect(runtime.submit(candidate)["outcome"], "duplicate", "identical replay")
@@ -357,7 +357,7 @@ def case_duplicate_is_ack() -> None:
 
 
 def case_unsigned_transcript() -> None:
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "w"}))
     transcript = runtime.export_transcript("t1")
     _expect(transcript["integrity"], {"mode": "unsigned_fixture"}, "fixture integrity marker")
@@ -368,7 +368,7 @@ def case_unsigned_transcript() -> None:
 def case_profile_task_revision() -> None:
     task = b'{"format":"task-manifest-v1","instruction":"public summary"}'
     task_ref = "sha256:" + sha256(task).hexdigest()
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
     executed: list[bytes] = []
     effect = {"action": "send", "destination": "public-summary", "purpose": "x.xchat.fulfill"}
@@ -400,7 +400,7 @@ def case_profile_task_revision() -> None:
 def case_profile_handoff_recipient() -> None:
     task = b'{"format":"task-manifest-v1","instruction":"public summary"}'
     task_ref = "sha256:" + sha256(task).hexdigest()
-    runtime = Runtime()
+    runtime = Runtime(fixture_mode=True)
     runtime.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": task_ref}))
     runtime.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
     executed: list[str] = []
@@ -431,11 +431,11 @@ def case_profile_handoff_recipient() -> None:
 
 
 def case_profile_fork_quarantine() -> None:
-    left = Runtime()
+    left = Runtime(fixture_mode=True)
     left.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "work-1"}))
     right = left.store.records[:]
     left.submit(env("e2", "handoff", 2, 2, B, {"to": C}, "e1"))
-    fork = Runtime()
+    fork = Runtime(fixture_mode=True)
     fork.submit(env("e1", "delegate", 1, 1, A, {"assignee": B, "task_ref": "work-1"}))
     fork.submit(env("e2", "handoff", 2, 2, B, {"to": A}, "e1"))
     _expect(journal_relation(right, left.store.records), "left_prefix", "valid catchup")

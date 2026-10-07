@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added real Ed25519/RFC 8785 detached-proof verification with trusted principal-key resolution and mandatory PCP authority/finalization callbacks. Runtime fixture verification is now explicit.
+- Pinned nine canonical PCP schemas byte-identically to approved merged commit `0cd889a3b5fd64a99276596cd25ee3c9eddcfd80`; added provenance, drift detection, independent Unicode signature coverage, and Ubuntu/Windows CI.
 - Added an optional product execution authority profile. A signed `task_ref` can pin exact task manifest bytes; a live principal-signed PCP grant supplies action authority, and a separate Context Layer verifier supplies recipient-bound disclosure authorization for the floor-installing journal event.
 - Added a deterministic PCP grant → Context Layer disclosure → Legatus execution trace.
 - Added deterministic checks for task mutation, handoff freshness, stale views and writers, PCP finalization uncertainty, and journal fork classification without changing the v0 envelope or state machine.
