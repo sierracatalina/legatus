@@ -11,7 +11,7 @@ from conformance.legatus import Runtime
 from conformance.pcp_verifier import PCPVerifier, TrustedKey, decode_proof, signing_object
 
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "pcp-ed25519.json").read_text())
+FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "pcp-ed25519.json").read_text(encoding="utf-8"))
 
 
 def request(envelope):
